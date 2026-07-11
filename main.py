@@ -11,7 +11,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 genai.configure(api_key=GEMINI_API_KEY)
 
-model = genai.GenerativeModel(
+model = genai.GenerativeModel
     model = genai.GenerativeModel(model_name='gemini-pro')
 
 user_memories = defaultdict(list)
