@@ -1,4 +1,4 @@
-iimport os
+import os
 import telebot
 from collections import defaultdict
 import google.generativeai as genai
