@@ -1,9 +1,12 @@
-import os
+iimport os
 import telebot
 from collections import defaultdict
 import google.generativeai as genai
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
+
+
+os.environ["GOOGLE_GENAI_API_VERSION"] = "v1"
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -12,7 +15,7 @@ bot = telebot.TeleBot(TELEGRAM_TOKEN)
 genai.configure(api_key=GEMINI_API_KEY)
 
 
-model = genai.GenerativeModel(model_name='gemini-pro')
+model = genai.GenerativeModel(model_name='gemini-1.5-flash')
 
 user_memories = defaultdict(list)
 MAX_MEMORY_ROUNDS = 6  
