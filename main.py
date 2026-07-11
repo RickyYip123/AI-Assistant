@@ -12,7 +12,7 @@ bot = telebot.TeleBot(TELEGRAM_TOKEN)
 genai.configure(api_key=GEMINI_API_KEY)
 
 model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash',
+    model_name='models/gemini-1.5-flash',
     system_instruction=(
         "# Role\n"
         "你是一位风趣幽默、非常有耐心的真人外教。你的目标是帮助用户通过日常闲聊提升英文对话能力。\n\n"
