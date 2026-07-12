@@ -13,18 +13,20 @@ bot = telebot.TeleBot(TELEGRAM_TOKEN)
 user_memories = defaultdict(list)
 MAX_MEMORY_ROUNDS = 6  
 
+# 1. 网页健康检查服务器配置
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
         self.end_headers()
-        self.wfile.write(b"Bot is alive!")
+        self.wfile.write(b"Chat Bot is alive!")
 
 def run_health_check():
     port = int(os.getenv("PORT", 8080))
     server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
     server.serve_forever()
 
+# 2. 机器人指令逻辑
 @bot.message_handler(commands=['start', 'reset'])
 def send_welcome(message):
     chat_id = message.chat.id
@@ -44,13 +46,13 @@ def send_welcome(message):
         "（注意：不要长篇大论讲解语法，只给地道句子，保持对话流畅。）"
     )
     
-    
     user_memories[chat_id] = [
         {"role": "system", "content": prompt_setup},
         {"role": "assistant", "content": "Understood. I will act as a patient English tutor, correct your mistakes in Chinese with bold text, and keep our chat natural and fun! Let's chat! How was your day today?"}
     ]
     bot.reply_to(message, welcome_text)
 
+# 3. 机器人聊天核心逻辑
 @bot.message_handler(func=lambda message: True)
 def chat_with_agnes(message):
     chat_id = message.chat.id
@@ -60,9 +62,7 @@ def chat_with_agnes(message):
         send_welcome(message)
         return
 
-  
     user_memories[chat_id].append({"role": "user", "content": user_text})
-    
     
     url = "https://apihub.agnes-ai.com/v1/chat/completions"
     headers = {
@@ -78,7 +78,6 @@ def chat_with_agnes(message):
         response = requests.post(url, headers=headers, json=payload, timeout=60)
         res_data = response.json()
 
-       
         if "choices" in res_data and res_data["choices"]:
             ai_reply = res_data["choices"][0]["message"]["content"]
             print(f"====== 新消息 ======")
@@ -86,10 +85,8 @@ def chat_with_agnes(message):
             print(f"AI 回复: {ai_reply}")
             print(f"====================")
             
-           
             user_memories[chat_id].append({"role": "assistant", "content": ai_reply})
 
-        
             while len(user_memories[chat_id]) > (MAX_MEMORY_ROUNDS * 2 + 1):
                 user_memories[chat_id].pop(1) 
                 user_memories[chat_id].pop(1)
@@ -104,8 +101,8 @@ def chat_with_agnes(message):
         bot.reply_to(message, f"Connection Notice: {str(e)}")
         if user_memories[chat_id]:
             user_memories[chat_id].pop()
-            
 
+# 4. 完美的唯一入口启动器（必须在最底下）
 if __name__ == '__main__':
     print("Starting health check server...")
     threading.Thread(target=run_health_check, daemon=True).start()
