@@ -6,10 +6,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+AGNES_API_KEY = os.getenv("AGNES_API_KEY")
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
-
 
 user_memories = defaultdict(list)
 MAX_MEMORY_ROUNDS = 6  
@@ -47,50 +46,54 @@ def send_welcome(message):
     
     
     user_memories[chat_id] = [
-        {"role": "user", "parts": [{"text": prompt_setup}]},
-        {"role": "model", "parts": [{"text": "Understood. I will act as a patient English tutor, correct your mistakes in Chinese with bold text, and keep our chat natural and fun! Let's chat! How was your day today?"}]}
+        {"role": "system", "content": prompt_setup},
+        {"role": "assistant", "content": "Understood. I will act as a patient English tutor, correct your mistakes in Chinese with bold text, and keep our chat natural and fun! Let's chat! How was your day today?"}
     ]
     bot.reply_to(message, welcome_text)
 
 @bot.message_handler(func=lambda message: True)
-def chat_with_gemini(message):
+def chat_with_agnes(message):
     chat_id = message.chat.id
     user_text = message.text
 
     if chat_id not in user_memories or not user_memories[chat_id]:
-        
         send_welcome(message)
         return
 
-   
-    user_memories[chat_id].append({"role": "user", "parts": [{"text": user_text}]})
+  
+    user_memories[chat_id].append({"role": "user", "content": user_text})
     
-   
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
-    headers = {"Content-Type": "application/json"}
-    payload = {"contents": user_memories[chat_id]}
+    
+    url = "https://apihub.agnes-ai.com/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {AGNES_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "agnes-2.0-flash",
+        "messages": user_memories[chat_id]
+    }
 
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=30)
         res_data = response.json()
 
-        
-        if "candidates" in res_data and res_data["candidates"]:
-            ai_reply = res_data["candidates"][0]["content"]["parts"][0]["text"]
+       
+        if "choices" in res_data and res_data["choices"]:
+            ai_reply = res_data["choices"][0]["message"]["content"]
             
            
-            user_memories[chat_id].append({"role": "model", "parts": [{"text": ai_reply}]})
+            user_memories[chat_id].append({"role": "assistant", "content": ai_reply})
 
-            
-            while len(user_memories[chat_id]) > (MAX_MEMORY_ROUNDS * 2 + 2):
-                user_memories[chat_id].pop(2) 
-                user_memories[chat_id].pop(2)
+        
+            while len(user_memories[chat_id]) > (MAX_MEMORY_ROUNDS * 2 + 1):
+                user_memories[chat_id].pop(1) 
+                user_memories[chat_id].pop(1)
 
             bot.reply_to(message, ai_reply)
         else:
-            
             error_msg = res_data.get("error", {}).get("message", "Unknown API Error")
-            bot.reply_to(message, f"API Notice: {error_msg}")
+            bot.reply_to(message, f"Agnes AI Notice: {error_msg}")
             user_memories[chat_id].pop()
 
     except Exception as e:
@@ -101,5 +104,5 @@ def chat_with_gemini(message):
 if __name__ == '__main__':
     print("Starting health check server...")
     threading.Thread(target=run_health_check, daemon=True).start()
-    print("Gemini English Tutor Bot via Direct HTTP is running...")
+    print("Agnes AI English Tutor Bot is running...")
     bot.infinity_polling()
